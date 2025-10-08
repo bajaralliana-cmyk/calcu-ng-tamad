@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recipe Costing GG</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f9fafb;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .container {
+      background-color: white;
+      padding: 25px;
+      border-radius: 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      width: 400px;
+      text-align: center;
+      overflow-y: auto;
+      max-height: 90vh;
+    }
+
+    h1 {
+      font-size: 22px;
+      margin-bottom: 15px;
+      color: #374151;
+    }
+
+    .ingredient {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    input {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      background-color: #10b981;
+      border: none;
+      color: white;
+      font-size: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background-color: #059669;
+    }
+
+    .result {
+      margin-top: 15px;
+      font-weight: bold;
+      color: #374151;
+      text-align: left;
+    }
+
+    .add-btn {
+      background-color: #3b82f6;
+    }
+
+    .add-btn:hover {
+      background-color: #2563eb;
+    }
+
+    label {
+      display: block;
+      text-align: left;
+      margin-top: 10px;
+      font-weight: bold;
+      color: #374151;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Recipe Costing GG</h1>
+
+    <div id="ingredients"></div>
+    <button class="add-btn" onclick="addIngredient()">+ Add Ingredient</button>
+
+    <label>Desired Serving Weight (grams):</label>
+    <input type="number" id="desiredWeight" placeholder="e.g. 90" />
+
+    <label>Markup % (profit margin):</label>
+    <input type="number" id="markup" placeholder="e.g. 30" value="30" />
+
+    <button onclick="calculateRecipe()">Calculate</button>
+    <div class="result" id="result"></div>
+  </div>
+
+  <script>
+    let ingredientCount = 0;
+
+    function addIngredient() {
+      ingredientCount++;
+      const container = document.getElementById("ingredients");
+
+      const div = document.createElement("div");
+      div.className = "ingredient";
+      div.innerHTML = `
+        <input type="text" placeholder="Ingredient ${ingredientCount}" />
+        <input type="number" placeholder="Cost ₱" class="cost" />
+        <input type="number" placeholder="Weight g" class="weight" />
+      `;
+
+      container.appendChild(div);
+    }
+
+    function calculateRecipe() {
+      const costs = Array.from(document.querySelectorAll(".cost")).map(c => parseFloat(c.value) || 0);
+      const weights = Array.from(document.querySelectorAll(".weight")).map(w => parseFloat(w.value) || 0);
+      const desiredWeight = parseFloat(document.getElementById("desiredWeight").value);
+      const markup = parseFloat(document.getElementById("markup").value) || 0;
+      const resultDiv = document.getElementById("result");
+
+      if (costs.length === 0 || weights.length === 0 || isNaN(desiredWeight)) {
+        resultDiv.textContent = "Please add ingredients and desired serving weight!";
+        resultDiv.style.color = "red";
+        return;
+      }
+
+      const totalCost = costs.reduce((a, b) => a + b, 0);
+      const totalWeight = weights.reduce((a, b) => a + b, 0);
+      const servings = totalWeight / desiredWeight;
+      const costPerServing = totalCost / servings;
+      const sellingPrice = costPerServing * (1 + markup / 100);
+      const totalSales = sellingPrice * servings;
+      const estimatedProfit = totalSales - totalCost;
+
+      resultDiv.style.color = "#374151";
+      resultDiv.innerHTML = `
+        🧾 <b>Total Cost:</b> ₱${totalCost.toFixed(2)}<br>
+        ⚖️ <b>Total Weight:</b> ${totalWeight.toFixed(2)} g<br>
+        🍞 <b>Estimated Servings:</b> ${servings.toFixed(2)}<br>
+        💰 <b>Cost per Serving:</b> ₱${costPerServing.toFixed(2)}<br>
+        💵 <b>Selling Price per Serving (Markup ${markup}%):</b> ₱${sellingPrice.toFixed(2)}<br>
+        📦 <b>Total Estimated Sales:</b> ₱${totalSales.toFixed(2)}<br>
+        📈 <b>Estimated Profit:</b> ₱${estimatedProfit.toFixed(2)}
+      `;
+    }
+
+    // Start with one ingredient by default
+    addIngredient();
+  </script>
+</body>
+</html>
