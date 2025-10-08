@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Recipe Costing GG — Arrow Key Navigation + Serving Summary</title>
+  <title>Recipe Cost Calculator — Yield & Serving Summary</title>
   <style>
     :root { --bg:#f7fafc; --card:#fff; --accent:#0ea5a4; }
     body { font-family:Inter,ui-sans-serif,system-ui; background:var(--bg); margin:0; color:#111827; }
@@ -12,21 +12,23 @@
     input, select, button { font-size:14px; padding:8px; border-radius:8px; border:1px solid #e5e7eb; }
     input[type=number] { width:90px; }
     table { width:100%; border-collapse:collapse; margin-top:12px; }
-    th, td { padding:8px; border-top:1px solid #eef2f7; }
+    th, td { padding:8px; border-top:1px solid #eef2f7; text-align:left; }
     .btn { background:var(--accent); color:#fff; border:none; border-radius:8px; cursor:pointer; padding:6px 10px; }
+    h3 { margin-top:22px; }
+    #summaryTable td:first-child { font-weight:600; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
-      <h2>Recipe Costing GG (Arrow Key Navigation)</h2>
+      <h2>Recipe Cost Calculator (with Yield Summary)</h2>
       <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; align-items:center;">
         <input id="recipeName" placeholder="Recipe Name" />
         <label>Servings: <input id="servings" type="number" min="1" value="1" /></label>
+        <label>Serving Size (g): <input id="servingSize" type="number" min="1" value="150" /></label>
         <label>Buffer %: <input id="buffer" type="number" min="0" step="0.1" value="5" /></label>
         <label>Markup %: <input id="markup" type="number" min="0" step="0.1" value="30" /></label>
         <label>Food Cost %: <input id="foodCostInput" type="number" min="0" step="0.1" value="35" /></label>
-        <label>Desired Weight per Serving: <input id="desiredServingWeight" type="number" min="1" step="1" value="100" /> g</label>
       </div>
 
       <table id="table">
@@ -48,14 +50,23 @@
 
       <h3>Results</h3>
       <div id="results"></div>
-      <div id="servingSummary" style="margin-top:12px; font-weight:bold;"></div>
+
+      <h3>Serving Summary</h3>
+      <table id="summaryTable">
+        <tbody>
+          <tr><td>Total Desired Weight:</td><td id="totalWeightCell">0 g</td></tr>
+          <tr><td>Estimated Yield (Servings):</td><td id="yieldCell">0</td></tr>
+          <tr><td>Cost per Serving:</td><td id="costPerServingCell">₱0.00</td></tr>
+          <tr><td>Suggested Selling Price (Markup):</td><td id="sellMarkupCell">₱0.00</td></tr>
+          <tr><td>Suggested Selling Price (Target Food Cost):</td><td id="sellFoodCostCell">₱0.00</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
   <script>
     const tbody=document.querySelector('tbody');
     const results=document.getElementById('results');
-    const servingSummary=document.getElementById('servingSummary');
     const addRowBtn=document.getElementById('addRow');
 
     function addRow(data={}) {
@@ -73,7 +84,10 @@
 
       const pkgUnitSel=tr.querySelector('.pkgUnit');
       const useUnitSel=tr.querySelector('.useUnit');
-      pkgUnitSel.addEventListener('change',()=>{useUnitSel.value=pkgUnitSel.value; computeAll();});
+      pkgUnitSel.addEventListener('change',()=>{
+        useUnitSel.value=pkgUnitSel.value;
+        computeAll();
+      });
 
       tr.querySelectorAll('input,select').forEach(input=>{
         input.addEventListener('input',computeAll);
@@ -86,16 +100,15 @@
 
     function convertToGrams(val,unit){
       val=parseFloat(val)||0;
-      if(unit==='kg'||unit==='l') return val*1000;
+      if(unit==='kg'||unit==='l')return val*1000;
       return val;
     }
 
     function computeAll(){
       let total=0;
+      let totalDesiredWeight=0;
       const servings=parseFloat(document.getElementById('servings').value)||1;
-      const desiredWeight=parseFloat(document.getElementById('desiredServingWeight').value)||1;
-
-      let totalActualWeight=0;
+      const servingSize=parseFloat(document.getElementById('servingSize').value)||0;
 
       tbody.querySelectorAll('tr').forEach(tr=>{
         const pkgSize=convertToGrams(tr.querySelector('.pkgSize').value,tr.querySelector('.pkgUnit').value);
@@ -103,10 +116,11 @@
         const useWeight=convertToGrams(tr.querySelector('.useWeight').value,tr.querySelector('.useUnit').value);
         const costPerGram=pkgSize>0?pkgCost/pkgSize:0;
         const costForUse=costPerGram*useWeight;
+
         const costPerServing = costForUse / servings;
         tr.querySelector('.costServe').textContent='₱'+costPerServing.toFixed(2);
         total+=costForUse;
-        totalActualWeight+=useWeight;
+        totalDesiredWeight+=useWeight;
       });
 
       const markup=parseFloat(document.getElementById('markup').value)||0;
@@ -120,19 +134,27 @@
       const sellPriceFromFoodCost=desiredFoodCost>0?costPerServingTotal/(desiredFoodCost/100):sellPriceFromMarkup;
       const foodCost=(costPerServingTotal/sellPriceFromFoodCost)*100;
 
-      // Results
       results.innerHTML=`
         <p>Total Cost: ₱${total.toFixed(2)}</p>
         <p>Buffer (${bufferPct}%): ₱${buffer.toFixed(2)}</p>
         <p>Adjusted Cost: ₱${adjusted.toFixed(2)}</p>
-        <p>Cost per Serving: ₱${costPerServingTotal.toFixed(2)}</p>
+        <p>Cost per Serving (Manual Servings ${servings}): ₱${costPerServingTotal.toFixed(2)}</p>
         <p>Suggested Selling Price (Markup ${markup}%): ₱${sellPriceFromMarkup.toFixed(2)}</p>
         <p>Suggested Selling Price (Target Food Cost ${desiredFoodCost}%): ₱${sellPriceFromFoodCost.toFixed(2)}</p>
         <p>Food Cost %: ${foodCost.toFixed(1)}%</p>`;
 
-      // Serving Summary
-      const estimatedServings=Math.floor(totalActualWeight / desiredWeight);
-      servingSummary.innerHTML=`🍞 Estimated Yield (Servings/Pieces) based on actual ingredients: <b>${estimatedServings}</b>`;
+      // ===== New Serving Summary Section =====
+      let yieldServings = 0;
+      if(servingSize > 0) yieldServings = totalDesiredWeight / servingSize;
+      const costPerServingYield = yieldServings>0 ? total / yieldServings : 0;
+      const sellMarkupYield = costPerServingYield * (1 + markup/100);
+      const sellFoodCostYield = desiredFoodCost>0 ? costPerServingYield / (desiredFoodCost/100) : sellMarkupYield;
+
+      document.getElementById('totalWeightCell').textContent = totalDesiredWeight.toFixed(0) + ' g';
+      document.getElementById('yieldCell').textContent = yieldServings.toFixed(1);
+      document.getElementById('costPerServingCell').textContent = '₱' + costPerServingYield.toFixed(2);
+      document.getElementById('sellMarkupCell').textContent = '₱' + sellMarkupYield.toFixed(2);
+      document.getElementById('sellFoodCostCell').textContent = '₱' + sellFoodCostYield.toFixed(2);
     }
 
     function handleKeyNav(e){
@@ -145,14 +167,31 @@
       const cellIndex = cells.indexOf(e.target);
       const rowIndex = rows.indexOf(row);
 
-      if(e.key==='ArrowRight'){ e.preventDefault(); if(cellIndex+1<cells.length) cells[cellIndex+1].focus(); }
-      else if(e.key==='ArrowLeft'){ e.preventDefault(); if(cellIndex>0) cells[cellIndex-1].focus(); }
-      else if(e.key==='ArrowUp'){ e.preventDefault(); if(rowIndex>0){ const upper = rows[rowIndex-1].querySelectorAll('input,select')[cellIndex]; if(upper) upper.focus(); } }
-      else if(e.key==='ArrowDown'){ e.preventDefault(); if(rowIndex+1<rows.length){ const lower = rows[rowIndex+1].querySelectorAll('input,select')[cellIndex]; if(lower) lower.focus(); } }
+      if(e.key==='ArrowRight'){
+        e.preventDefault();
+        if(cellIndex+1<cells.length) cells[cellIndex+1].focus();
+      } else if(e.key==='ArrowLeft'){
+        e.preventDefault();
+        if(cellIndex>0) cells[cellIndex-1].focus();
+      } else if(e.key==='ArrowUp'){
+        e.preventDefault();
+        if(rowIndex>0){
+          const upper = rows[rowIndex-1].querySelectorAll('input,select')[cellIndex];
+          if(upper) upper.focus();
+        }
+      } else if(e.key==='ArrowDown'){
+        e.preventDefault();
+        if(rowIndex+1<rows.length){
+          const lower = rows[rowIndex+1].querySelectorAll('input,select')[cellIndex];
+          if(lower) lower.focus();
+        } else {
+          addRow(); // auto-add new row when pressing Down on the last one
+        }
+      }
     }
 
     addRowBtn.onclick=()=>{addRow();};
-    ['servings','markup','buffer','foodCostInput','desiredServingWeight'].forEach(id=>{
+    ['servings','markup','buffer','foodCostInput','servingSize'].forEach(id=>{
       document.getElementById(id).addEventListener('input',computeAll);
       document.getElementById(id).addEventListener('change',computeAll);
     });
